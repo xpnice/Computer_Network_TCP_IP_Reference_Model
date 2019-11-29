@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 //由sender向recevier发起连接
 
 #define ERROR -1
@@ -20,10 +22,20 @@
 
 int client_socket_desc;
 
-
-
 int main(int argc, char *argv[])
 {
+    //共享内存
+    //创建共享内存
+    //创建共享内存
+    int shmid = GetShm(MEM_SIZE, RDL_RPL_KEYID);
+    char *addr = shmat(shmid, NULL, 0);
+    if (addr != NULL)
+    {
+        printf("成功链接共享内存\n");
+    }
+    memset(addr, '\0', MEM_SIZE);
+    addr[MEM_FLAG_ADDR] = Can_Write;
+
     //create socket
     int socket_desc = create_bind();
     //listen
@@ -50,19 +62,23 @@ int main(int argc, char *argv[])
     fflush(stdout);
     //从sender接收消息
     frame s; /* 帧 */
-    frame f_ack;
+    int count = 0;
     while (1)
     {
-        RPL_from_SPL(&s,client_socket_desc); /*从发送方物理层接收包 */
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
-        printf("\n**********************\n");
-        RPL_to_RDL(s); /* 向数据链路层发送帧 */
+        printf("**********************\n");
+        count++;
+        printf("\n第%d帧\n", count);
 
+        RPL_from_SPL(&s, client_socket_desc); /*从发送方物理层接收包 */
+        sysUsecTime();
+        // int i = 0;
+        // for (i = 0; i < MAX_PKT; i++)
+        //     printf("%c", s.info.data[i]);
 
-        RPL_from_RDL(&f_ack);/* 从数据链路层接收回复帧 */
-        RPL_to_SPL(f_ack,client_socket_desc);/* 向物理层发送回复帧 */
+        fflush(stdout);
+        RPL_to_RDL(&s, addr); /* 向数据链路层发送帧 */
+        sysUsecTime();
+        fflush(stdout);
     }
 
     return 0;
