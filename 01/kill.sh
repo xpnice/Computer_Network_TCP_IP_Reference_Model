@@ -1,0 +1,1 @@
+killall sender1_network sender1_datalink sender1_physical receiver1_network  receiver1_physical receiver1_datalink
