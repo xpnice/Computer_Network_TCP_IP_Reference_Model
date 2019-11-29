@@ -9,11 +9,11 @@
 
 #define WRITE_FINISH 40
 #define SHARE_FILE_END 41
-#define SIZEOF_FILE 1024 * 1024 * 100
+#define SIZEOF_FILE 1024 * 1024 * 1024
 #define MAX_SHARE_FILES 5010
 
 const char *RECEIVER_PORT = "4000";
-const char *RECEIVER_IP = "192.168.80.230";
+const char *RECEIVER_IP = "192.168.193.90";
 
 //共享内存标志位
 #define MEM_FLAG_ADDR 0

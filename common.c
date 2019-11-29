@@ -754,39 +754,54 @@ void print_frame(frame s)
 
 void RPL_from_SPL(frame *s, int client_socket_desc)
 {
-    char frame_header[MAX_PKT + 12];
-    int rd_ret = read(client_socket_desc, frame_header, MAX_PKT + 12);
-    if (rd_ret < 0)
+    char frame_header[12];
+    int rd_ret;
+    int total = 0;
+    while (1)
     {
-        perror("receiver物理层从sender物理层接收数据出错\n");
-        exit(1);
+        rd_ret = read(client_socket_desc, frame_header, 12 - total);
+        if (rd_ret < 0)
+        {
+            perror("receiver物理层从sender物理层接收数据出错\n");
+            exit(1);
+        }
+        if (rd_ret == 0)
+        {
+            printf("对方中断连接\n");
+            fflush(stdout);
+            exit(1);
+        }
+        total += rd_ret;
+        if (total == 12)
+            break;
     }
-    if (rd_ret == 0)
-    {
-        printf("对方中断连接\n");
-        fflush(stdout);
-
-        //sysUsecTime();
-        exit(1);
-    }
-
     char2frame(frame_header, s);
     print_frame(*s);
+
+    total = 0;
     if (s->kind == data)
     {
-        if (rd_ret == (MAX_PKT + 12))
+        //继续读1024个数据
+        while (1)
         {
-            memcpy(s->info.data, &frame_header[12], MAX_PKT);
-            printf("接收数据帧成功\n");
+            rd_ret = read(client_socket_desc, s->info.data, MAX_PKT - total);
+            if (rd_ret < 0)
+            {
+                perror("receiver物理层从sender物理层接收数据出错\n");
+                exit(1);
+            }
+            if (rd_ret == 0)
+            {
+                printf("对方中断连接\n");
+                fflush(stdout);
+                exit(1);
+            }
+            total += rd_ret;
+            if (total == MAX_PKT)
+                break;
         }
-        else
-            printf("接收数据帧失败:%d\n", rd_ret);
+        printf("接收数据帧成功\n");
     }
-    else if (s->kind == ack || s->kind == nak)
-        if (rd_ret == 12)
-            printf("接收控制帧成功\n");
-        else
-            printf("接收控制帧失败:%d\n", rd_ret);
     return;
 }
 

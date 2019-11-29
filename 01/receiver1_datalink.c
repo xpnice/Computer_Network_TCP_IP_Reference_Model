@@ -51,16 +51,16 @@ void receiver1()
         printf("\n**********************\n");
 
         RDL_from_RPL(&s, addr_RDL_RPL); /* 从物理层获取帧 */
-        sysUsecTime();
-        // int i = 0;
-        // for (i = 0; i < MAX_PKT; i++)
-        //     printf("%c", s.info.data[i]);
+        //sysUsecTime();
+        int i = 0;
+        for (i = 0; i < MAX_PKT; i++)
+            printf("%c", s.info.data[i]);
 
         if (memcmp(CMPSTR, s.info.data, sizeof(char) * MAX_PKT) == 0)
         {
             shmdt(addr_RDL_RPL);
             DestroyShm(MEM_SHMID[RDL_RPL_KEYID]);
-            sysUsecTime();
+            //sysUsecTime();
 
             break;
         }
