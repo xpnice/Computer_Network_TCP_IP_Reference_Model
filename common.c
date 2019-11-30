@@ -484,7 +484,7 @@ void generate_file(const char *filename)
     int fd = open(filename, O_WRONLY | O_CREAT, 0666);
     //lock_set(fd, F_WRLCK);
     //long int N = 1024 * 10;
-    long int n = 0;
+    unsigned long int n = 0;
     while (1)
     {
         char s[KB];
@@ -752,6 +752,7 @@ void print_frame(frame s)
     printf("接收序号是%d\n", s.ack);
 }
 
+//修改过！！！！！！！！！！！！！！！！！！！！！！！！
 void RPL_from_SPL(frame *s, int client_socket_desc)
 {
     char frame_header[12];
@@ -759,7 +760,7 @@ void RPL_from_SPL(frame *s, int client_socket_desc)
     int total = 0;
     while (1)
     {
-        rd_ret = read(client_socket_desc, frame_header, 12 - total);
+        rd_ret = read(client_socket_desc, frame_header + total, 12 - total);
         if (rd_ret < 0)
         {
             perror("receiver物理层从sender物理层接收数据出错\n");
@@ -784,7 +785,7 @@ void RPL_from_SPL(frame *s, int client_socket_desc)
         //继续读1024个数据
         while (1)
         {
-            rd_ret = read(client_socket_desc, s->info.data, MAX_PKT - total);
+            rd_ret = read(client_socket_desc, &s->info.data[0] + total, MAX_PKT - total);
             if (rd_ret < 0)
             {
                 perror("receiver物理层从sender物理层接收数据出错\n");

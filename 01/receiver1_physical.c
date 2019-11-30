@@ -24,9 +24,8 @@ int client_socket_desc;
 
 int main(int argc, char *argv[])
 {
+    current_protocol = PROTOCOL1;
     //共享内存
-    //创建共享内存
-    //创建共享内存
     int shmid = GetShm(MEM_SIZE, RDL_RPL_KEYID);
     char *addr = shmat(shmid, NULL, 0);
     if (addr != NULL)
