@@ -194,14 +194,48 @@ void SDL_from_SNL(packet *buffer, int fd)
     else if (rd_ret == 0)
     {
         //无数据可读，最后发一个全尾0数据包
-        memset(buffer->data, '\0', MAX_PKT);
+        //printf("end\n");
+
+        sleep(1);
+        rd_ret = read(fd, buffer->data, MAX_PKT);
+        if (rd_ret == 0)
+            memset(buffer->data, '\0', MAX_PKT);
+        else if (rd_ret < MAX_PKT) //文件读取结束
+        {                          //将共享文件最后补全\0
+            //memcpy(&buffer[rd_ret], CMPSTR, MAX_PKT - rd_ret);
+            while (1)
+            {
+                sleep(1); //文件可能没有生成完毕，当读取不满MAX时，让进程sleep一秒继续读取。
+                rd_ret += read(fd, &buffer->data[rd_ret], MAX_PKT);
+                if (rd_ret == 0)
+                {
+                    memcpy(&buffer[rd_ret], CMPSTR, MAX_PKT - rd_ret);
+                    break;
+                }
+                if (rd_ret == MAX_PKT)
+                    break;
+            }
+        }
     }
     else if (rd_ret < MAX_PKT) //文件读取结束
-        //将共享文件最后补全\0
-        memcpy(&buffer[rd_ret], CMPSTR, MAX_PKT - rd_ret);
-    //lock_set(fd, F_UNLCK);
-    //close(fd);
+    {                          //将共享文件最后补全\0
+        //memcpy(&buffer[rd_ret], CMPSTR, MAX_PKT - rd_ret);
+        while (1)
+        {
+            sleep(1); //文件可能没有生成完毕，当读取不满MAX时，让进程sleep一秒继续读取。
+            rd_ret += read(fd, &buffer->data[rd_ret], MAX_PKT);
+            if (rd_ret == 0)
+            {
+                memcpy(&buffer[rd_ret], CMPSTR, MAX_PKT - rd_ret);
+                break;
+            }
+            if (rd_ret == MAX_PKT)
+                break;
+        }
+    }
 }
+//lock_set(fd, F_UNLCK);
+//close(fd);
 
 // void SDL_from_SNL(packet *buffer, int *file_id)
 // {

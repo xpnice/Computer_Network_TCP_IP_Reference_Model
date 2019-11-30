@@ -14,7 +14,7 @@
 //unsigned long int SIZEOF_FILE = 1024 * 1024 * 1024 ;
 
 const char *RECEIVER_PORT = "4000";
-const char *RECEIVER_IP = "192.168.193.90";
+const char *RECEIVER_IP = "192.168.80.230";
 
 //共享内存标志位
 #define MEM_FLAG_ADDR 0
