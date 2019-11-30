@@ -9,11 +9,12 @@
 
 #define WRITE_FINISH 40
 #define SHARE_FILE_END 41
-#define SIZEOF_FILE 1024 * 1024 * 100
+#define SIZEOF_FILE 1024 * 1024 * 1024
 #define MAX_SHARE_FILES 5010
+//unsigned long int SIZEOF_FILE = 1024 * 1024 * 1024 ;
 
 const char *RECEIVER_PORT = "4000";
-const char *RECEIVER_IP = "192.168.80.230";
+const char *RECEIVER_IP = "192.168.193.90";
 
 //共享内存标志位
 #define MEM_FLAG_ADDR 0
@@ -26,6 +27,13 @@ const char Can_Read = '1';
 #define RNL_RDL_KEYID 3
 
 int MEM_SHMID[4]; //存储共享内存shmid，以便释放
+
+//存储现在正在运行的是协议几
+#define PROTOCOL1 1
+#define PROTOCOL2 2
+#define PROTOCOL3 3
+#define PROTOCOL4 4
+int current_protocol;
 
 static int CommShm(int size, int flags, int id);
 int DestroyShm(int shmid);
