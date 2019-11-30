@@ -24,9 +24,8 @@ int client_socket_desc;
 
 int main(int argc, char *argv[])
 {
+    current_protocol = PROTOCOL1;
     //共享内存
-    //创建共享内存
-    //创建共享内存
     int shmid = GetShm(MEM_SIZE, RDL_RPL_KEYID);
     char *addr = shmat(shmid, NULL, 0);
     if (addr != NULL)
@@ -71,9 +70,9 @@ int main(int argc, char *argv[])
 
         RPL_from_SPL(&s, client_socket_desc); /*从发送方物理层接收包 */
         sysUsecTime();
-        // int i = 0;
-        // for (i = 0; i < MAX_PKT; i++)
-        //     printf("%c", s.info.data[i]);
+        int i = 0;
+        for (i = 0; i < MAX_PKT; i++)
+            printf("%c", s.info.data[i]);
 
         fflush(stdout);
         RPL_to_RDL(&s, addr); /* 向数据链路层发送帧 */

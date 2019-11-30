@@ -42,39 +42,18 @@ void sender1()
 
     while (true)
     {
-        printf("**********************\n");
-        struct stat statbuff;
-        if (stat(file_name, &statbuff) < 0)
-        {
-            perror("stat");
-        }
-        if (statbuff.st_size < MAX_PKT)
-            continue;
+        // printf("**********************\n");
         SDL_from_SNL(&s.info, fd); //从网络层读数据
-        sysUsecTime();
+        // sysUsecTime();
         init_frame(&s);
 
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
-        printf("\n");
+        // int i = 0;
+        // for (i = 0; i < MAX_PKT; i++)
+        //     printf("%c", s.info.data[i]);
+        // printf("\n");
 
         SDL_to_SPL(&s, addr, &cnt_sended_frames);
         //sysUsecTime();
-        //cnt++;
-        // if (cnt_sended_frames == 1024)
-        // {
-        //     printf("发%d\n", cnt_sended_frames);
-        //     fflush(stdout);
-        // }
-
-        // if (file_id == MAX_SHARE_FILES)
-        // {
-        //     file_id = 0;
-        //     int SNL_PID = get_pid("sender1_network");
-        //     if (SNL_PID != 0)
-        //         kill(SNL_PID, SHARE_FILE_END);
-        // }
 
         if (memcmp(CMPSTR, s.info.data, sizeof(char) * MAX_PKT) == 0)
         {
@@ -88,7 +67,7 @@ void sender1()
 
 int main()
 {
-
+    current_protocol = PROTOCOL1;
     sender1();
     return 0;
 }
