@@ -18,7 +18,7 @@ const char *RECEIVER_IP = "192.168.193.90";
 
 //共享内存标志位
 #define MEM_FLAG_ADDR 0
-#define DATA_START_ADDR 1
+#define DATA_START_ADDR 1；
 const char Can_Write = '0';
 const char Can_Read = '1';
 #define MEM_SIZE 1040
@@ -34,6 +34,12 @@ int MEM_SHMID[4]; //存储共享内存shmid，以便释放
 #define PROTOCOL3 3
 #define PROTOCOL4 4
 int current_protocol;
+
+//两方物理层错误概率
+#define SPL_LOST_PERC 30 //单位千分之一
+#define SPL_CHER_PERC 30 //单位千分之一
+#define RPL_LOST_PERC 30 //单位千分之一
+#define RPL_CHER_PERC 30 //单位千分之一
 
 static int CommShm(int size, int flags, int id);
 int DestroyShm(int shmid);
@@ -100,6 +106,7 @@ void SPL_from_SDL(frame *s, char *addr);
 void SPL_to_RPL(frame s, int client_socket_desc);
 //--------------------------------------------------------------------
 void RPL_from_SPL(frame *s, int client_socket_desc);
+void SPL_from_RPL(frame s, int client_socket_desc);
 void RPL_to_RDL(frame *s, char *addr);
 void RPL_to_SPL(frame s, int client_socket_desc);
 /*接收方从物理层取得帧
@@ -160,3 +167,5 @@ void SDL_from_SNL(packet *buffer, int fd);
 
 void sysLocalTime();
 void sysUsecTime();
+
+boolen fit_percentage(int percentage);

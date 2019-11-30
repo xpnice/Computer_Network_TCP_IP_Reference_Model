@@ -953,8 +953,31 @@ void SPL_from_RPL(frame *s, int client_socket_desc)
     }
     else if (s->kind == ack || s->kind == nak)
         if (rd_ret == 12)
-            printf("接收控制帧成功\n");
+        {
+            //SPL_LOST_PERC/10%丢弃->数据链路层等待超时
+            if (fit_percentage(SPL_LOST_PERC))
+            {
+                //标志位不变：等待
+                return;
+            }
+            //SPL_CHER_PERC/10%丢弃->向数据链路层发送chsum_error
+            else if (fit_percentage(SPL_CHER_PERC))
+            {
+                //标志位置错误
+                return;
+            }
+            else
+            {
+                //标志位置收到
+                printf("接收控制帧成功\n");
+            }
+        }
         else
             printf("接收控制帧失败:%d\n", rd_ret);
     return;
+}
+//是否满足该概率
+boolen fit_percentage(int percentage)
+{
+    return rand() % 1000 < percentage ? true : false
 }
