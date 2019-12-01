@@ -42,10 +42,15 @@ int MEM_SHMID[4]; //存储共享内存shmid，以便释放
 #define PROTOCOL4 4
 int current_protocol;
 
+//协议一概率，单位千分之一
+#define ACK_DELAY 100 //协议二延时概率 缺省10%
+#define DELAY_US 100  //协议二延时时间 单位微妙
+//协议二概率，单位千分之一
+#define RPL_CKERR 30  //协议三接收方CKSUM_ERROR概率 缺省3%
+#define RPL_LOST 30   //协议三接收方CKSUM_ERROR概率 缺省3%
+#define SPL_CKERR 30  //协议三接收方丢包概率 缺省3%
+#define SPL_LOST 30   //协议三发送方CKSUM_ERROR概率 缺省3%
 
-//概率，单位千分之一
-#define ACK_DELAY 100
-#define DELAY_US 100
 
 static int CommShm(int size, int flags, int id);
 int DestroyShm(int shmid);
