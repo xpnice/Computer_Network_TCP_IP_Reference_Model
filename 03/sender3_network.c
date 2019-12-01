@@ -5,7 +5,7 @@
 
 int main()
 {
-    current_protocol = PROTOCOL2;
+    current_protocol = PROTOCOL3;
     SNL_to_SDL();
     return 0;
 }

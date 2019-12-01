@@ -8,9 +8,8 @@ RPATH=-Wl,-rpath=.
 HEAD=-I../
 
 SRCS=\
-		sender1_network.c sender1_datalink.c sender1_physical.c \
-		receiver1_network.c  receiver1_physical.c receiver1_datalink.c \
-		test.c
+		sender2_network.c sender2_datalink.c sender2_physical.c \
+		receiver2_network.c  receiver2_physical.c receiver2_datalink.c \
 
 TARGET=$(patsubst %.c, %, $(SRCS))
 OBJS=$(SRCS:.c=.o) 
@@ -31,34 +30,34 @@ test:test.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
 
-sender1_network.o:sender1_network.c 
+sender2_network.o:sender2_network.c 
 	$(CC) $(HEAD) -o $@ -c $<
-sender1_network:sender1_network.o
+sender2_network:sender2_network.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
-sender1_datalink.o:sender1_datalink.c 
+sender2_datalink.o:sender2_datalink.c 
 	$(CC) $(HEAD) -o $@ -c $<
-sender1_datalink:sender1_datalink.o
+sender2_datalink:sender2_datalink.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
-sender1_physical.o:sender1_physical.c 
+sender2_physical.o:sender2_physical.c 
 	$(CC) $(HEAD) -o $@ -c $<
-sender1_physical:sender1_physical.o
+sender2_physical:sender2_physical.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
-receiver1_network.o:receiver1_network.c 
+receiver2_network.o:receiver2_network.c 
 	$(CC) $(HEAD) -o $@ -c $<
-receiver1_network:receiver1_network.o
+receiver2_network:receiver2_network.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
-receiver1_datalink.o:receiver1_datalink.c 
+receiver2_datalink.o:receiver2_datalink.c 
 	$(CC) $(HEAD) -o $@ -c $<
-receiver1_datalink:receiver1_datalink.o
+receiver2_datalink:receiver2_datalink.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
-receiver1_physical.o:receiver1_physical.c 
+receiver2_physical.o:receiver2_physical.c 
 	$(CC) $(HEAD) -o $@ -c $<
-receiver1_physical:receiver1_physical.o
+receiver2_physical:receiver2_physical.o
 	$(CC) -o $@ $^  $(LDFLAGS) $(DLIBS) $(RPATH) 
 
 #¹²Ïí¿â----------------------------------------------

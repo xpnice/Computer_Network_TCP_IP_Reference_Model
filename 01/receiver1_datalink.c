@@ -30,42 +30,21 @@ void receiver1()
         printf("成功链接共享内存\n");
     }
     MEM_SHMID[RDL_RPL_KEYID] = shmid;
-    //memset(addr_RDL_RPL, '\0', MEM_SIZE);
-    //addr_RDL_RPL[MEM_FLAG_ADDR] = Can_Write;
-
-    // //创建RNL_RDL共享内存
-    // shmid = GetShm(MEM_SIZE, RNL_RDL_KEYID);
-    // char *addr_RNL_RDL = shmat(shmid, NULL, 0);
-    // if (addr_RNL_RDL != NULL)
-    // {
-    //     printf("成功链接共享内存\n");
-    // }
-    //memset(addr_RNL_RDL, '\0', MEM_SIZE);
-    //addr_RNL_RDL[MEM_FLAG_ADDR] = Can_Write;
 
     int cnt = 0;
     while (true)
     {
-        //printf("%d\n", frame_arr);
-        //wait_for_event(&event); /* 等待直到有帧到达 */
-        // printf("\n**********************\n");
-
+        printf("**********************\n");
         RDL_from_RPL(&s, addr_RDL_RPL); /* 从物理层获取帧 */
-        //sysUsecTime();
-        // int i = 0;
-        // for (i = 0; i < MAX_PKT; i++)
-        //     printf("%c", s.info.data[i]);
-
+        RDL_to_RNL(&s.info);            /* 传递包到网络层 */
+        cnt++;
+        printf("接收到第%d帧\n", cnt);
         if (memcmp(CMPSTR, s.info.data, sizeof(char) * MAX_PKT) == 0)
         {
             shmdt(addr_RDL_RPL);
             DestroyShm(MEM_SHMID[RDL_RPL_KEYID]);
-            //sysUsecTime();
             break;
         }
-
-        RDL_to_RNL(&s.info, &file_id); /* 传递包到网络层 */
-        //sysUsecTime();
     }
 }
 

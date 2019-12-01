@@ -16,12 +16,17 @@
 #include <sys/errno.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #define ONCE 12
 
 int client_socket_desc;
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
+    current_protocol = PROTOCOL2;
+
     //建立 socket
     client_socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket_desc == -1)
@@ -55,23 +60,51 @@ int main(int argc, char *argv[])
     //物理层从数据链路层取得数据
     //向Recevier端发送消息
 
-    frame s; /* 帧 */
-    frame f_ack;
+    //创建共享内存-----------------------------------------------
+    int shmid = GetShm(MEM_SIZE, SDL_SPL_KEYID);
+    char *addr = shmat(shmid, NULL, 0);
+    if (addr != NULL)
+    {
+        printf("成功链接共享内存\n");
+    }
+    // memset(addr, '\0', MEM_SIZE);
+    // addr[MEM_FLAG_ADDR] = Can_Write;
+
+    MEM_SHMID[SDL_SPL_KEYID] = shmid;
+    //------------------------------------------------------------
+
+    frame s;     /* 帧 */
+    frame f_ack; /*回复帧*/
     int count = 0;
     while (1)
     {
-        printf("**********************\n");
-        SPL_from_SDL(&s); /*从数据链路层获取包 */
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
 
+        printf("**********************\n");
+        //此时，共享内存标志位为Can_Read & ~Send_Ack
+        SPL_from_SDL(&s, addr); /*从数据链路层获取包 */
+
+        //此时，共享内存标志位为Can_Write & Send_Ack
         SPL_to_RPL(s, client_socket_desc); /* 通过物理层发送帧 */
+
         count++;
         printf("第%d帧发送成功\n", count);
+        fflush(stdout);
 
+        if (memcmp(CMPSTR, s.info.data, sizeof(char) * MAX_PKT) == 0)
+        {
+            shmdt(addr);
+            DestroyShm(MEM_SHMID[SDL_SPL_KEYID]);
+            exit(1);
+        }
+        //阻塞接收
         SPL_from_RPL(&f_ack, client_socket_desc); /* 从接收方物理层接收回复帧 
         判断接收是否为回复帧，是的话，发送信号给发送方数据链路层*/
+        //printf("从RPL接收到数据——kind:%d\n",f_ack.kind);
+
+        //修改共享内存标志位
+        //此时，共享内存标志位为Can_Write & Send_Ack
+        SPL_to_SDL(&f_ack, addr);
+        //此时，共享内存标志位为Can_Write & ~Send_Ack
     }
 
     return 0;
