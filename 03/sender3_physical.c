@@ -24,7 +24,7 @@ int client_socket_desc;
 
 int main(int argc, char *argv[])
 {
-    current_protocol = PROTOCOL3;
+    current_protocol = PROTOCOL2;
 
     //建立 socket
     client_socket_desc = socket(AF_INET, SOCK_STREAM, 0);
@@ -74,23 +74,19 @@ int main(int argc, char *argv[])
 
     frame s;     /* 帧 */
     frame f_ack; /*回复帧*/
+    seq_nr seq_want = 0;
     int count = 0;
     while (1)
     {
-        printf("**********************\n");
-        //此时，共享内存标志位为Can_Read & ~Send_Ack
+
+        //printf("**********************\n");
         SPL_from_SDL(&s, addr); /*从数据链路层获取包 */
                                 // int i = 0;
                                 // for (i = 0; i < MAX_PKT; i++)
                                 //     printf("%c", s.info.data[i]);
         //此时，共享内存标志位为Can_Write & Send_Ack
-        //printf("%c----%c\n", addr[MEM_FLAG_ADDR], addr[MEM_ACK_FLAG_ADDR]);
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
-        printf("\n");
 
-        SPL_to_RPL(s, client_socket_desc); /* 通过物理层发送帧 */      
+        SPL_to_RPL(s, client_socket_desc); /* 通过物理层发送帧 */
 
         count++;
         printf("第%d帧发送成功\n", count);
@@ -102,20 +98,35 @@ int main(int argc, char *argv[])
             DestroyShm(MEM_SHMID[SDL_SPL_KEYID]);
             exit(1);
         }
-        //阻塞接收
-        SPL_from_RPL(&f_ack, client_socket_desc); /* 从接收方物理层接收回复帧 
+        seq_want = s.seq;
+        //非阻塞接收
+        SPL_from_RPL1(&f_ack, client_socket_desc, addr); /* 从接收方物理层接收回复帧 
         判断接收是否为回复帧，是的话，发送信号给发送方数据链路层*/
-        //printf("从RPL接收到数据——kind:%d\n",f_ack.kind);
-        
-        //修改共享内存标志位   
+        if (addr[MEM_FLAG_ADDR] != Can_Write_Send)
+            continue;
+
+        if (fit_percentage(SPL_ERRO_PERCENTAGE))
+        {
+            printf("<!---SPL向上发送CKSUM_ERR---!>\n");
+            addr[MEM_FLAG_ADDR] = CKSUM_ERROR;
+            fflush(stdout);
+            continue;
+        }
+        if (fit_percentage(SPL_LOST_PERCENTAGE))
+        {
+            printf("<!---SPL没收到，ACK丢了!!!---!>\n");
+            fflush(stdout);
+            continue;
+        }
+
+        //修改共享内存标志位
         //此时，共享内存标志位为Can_Write & Send_Ack
-        SPL_to_SDL(&f_ack, addr);
-        //此时，共享内存标志位为Can_Write & ~Send_Ack
-
-
-        
-        printf("告诉SDL收到ACK\n");
-        fflush(stdout);
+        if (f_ack.seq == seq_want)
+        {
+            SPL_to_SDL(&f_ack, addr);
+            //此时，共享内存标志位为Can_Write & ~Send_Ack
+    
+        }
     }
 
     return 0;

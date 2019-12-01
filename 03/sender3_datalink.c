@@ -6,9 +6,38 @@
 #include <stdio.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/signal.h>
+#include <sys/time.h>
+boolen timer_out;
+seq_nr seq = 0;
 
+void signal_timer(int s)
+{
+    timer_out = true;
+}
+
+struct itimerval val;
+//启动第K帧的定时器
+void start_timer()
+{
+    val.it_value.tv_sec = TIME_LIMIT_SEC;
+    val.it_value.tv_usec = TIME_LIMIT_USEC;
+    val.it_interval.tv_sec = 0;
+    val.it_interval.tv_usec = 0;
+    setitimer(ITIMER_REAL, &val, NULL);
+}
+
+void stop_timer()
+{
+    val.it_value.tv_sec = 0;
+    val.it_value.tv_usec = 0;
+    val.it_interval.tv_sec = 0;
+    val.it_interval.tv_usec = 0;
+    setitimer(ITIMER_REAL, &val, NULL);
+}
 void sender1()
 {
+
     frame s;
     packet buffer;
     int file_id = 0;
@@ -16,6 +45,7 @@ void sender1()
     //创建共享内存
     int shmid = GetShm(MEM_SIZE, SDL_SPL_KEYID);
     char *addr = shmat(shmid, NULL, 0);
+
     if (addr != NULL)
     {
         printf("成功链接共享内存\n");
@@ -23,10 +53,6 @@ void sender1()
     //初始化共享内存
     memset(addr, '\0', MEM_SIZE);
     addr[MEM_FLAG_ADDR] = Can_Write_Not_Send;
-    //addr[MEM_ACK_FLAG_ADDR] = Not_Send_ack;
-    fflush(stdout);
-
-    int cnt = 0;
 
     char file_name[30] = "s_file.txt";
     while (1)
@@ -41,40 +67,62 @@ void sender1()
         exit(1);
     }
 
+    struct itimerval val;
+    int cnt = 0;
     while (true)
     {
-        printf("**********************\n");
-
-        SDL_from_SNL(&s.info, fd); //从网络层读数据
-
-        init_frame(&s);
-
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
-        printf("\n");
+        boolen can_go;
+        start_timer();
         fflush(stdout);
+        while (true)
+        {
+            if (addr[MEM_FLAG_ADDR] == CKSUM_ERROR || timer_out == true)
+            {
+                can_go = false;
+                addr[MEM_FLAG_ADDR] = Can_Write_Not_Send;
+                if (timer_out)
+                    printf("<!---数据超时，重新发送---!>\n");
+                else
+                    printf("<!---收到CKSUM_ERROR，重新发送---!>\n");
+                fflush(stdout);
+                break;
+            }
+            else if (addr[MEM_FLAG_ADDR] == Can_Write_Not_Send)
+            {
+                can_go = true;
+                break;
+            }
+        }
+        fflush(stdout);
+        stop_timer();
+        timer_out = false;
 
-        //初始化，共享内存标志位为Can_Write & ~Send_Ack
+        fflush(stdout);
+        if (can_go)
+        {
+            cnt++;
+            printf("正确传输第%d帧\n", cnt);
+            SDL_from_SNL(&s.info, fd); //从网络层读数据
+            init_frame(&s);
+            fflush(stdout);
+            s.seq = seq; //帧头序号为0
+            inc(seq);    //翻转帧头信号
+        }
+        print_frame(s);
+        fflush(stdout);
         SDL_to_SPL(&s, addr, &cnt_sended_frames);
-        //共享内存标志位为Can_Read & ~Send_Ack
-
         if (memcmp(CMPSTR, s.info.data, sizeof(char) * MAX_PKT) == 0)
         {
             shmdt(addr);
             exit(1);
         }
-
-        //阻塞判断标志位是否改变
-        //实现等待物理层收到ACK包后发送的信号
-        //期望标志位为Can_Write & ~Send_Ack
-        SDL_from_SPL(addr);
     }
 }
 
 int main()
 {
-    current_protocol = PROTOCOL3;
+    signal(SIGALRM, signal_timer);
+    current_protocol = PROTOCOL2;
     sender1();
     return 0;
 }

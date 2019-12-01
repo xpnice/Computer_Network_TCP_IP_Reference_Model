@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/select.h>
 #include "common.h"
 
 //函数声明
@@ -116,7 +117,6 @@ void init_frame(frame *s)
     s->seq = 0;
     s->kind = data;
 }
-
 /*lock_set函数*/
 void lock_set(int fd, int type)
 {
@@ -129,7 +129,6 @@ void lock_set(int fd, int type)
         lock.l_type = type;
         if ((fcntl(fd, F_SETLK, &lock)) == 0)
         {
-
             return;
         }
     }
@@ -188,7 +187,6 @@ void SDL_from_SNL(packet *buffer, int fd)
         }
     }
 }
-
 //addr共享内存起始地址
 void SDL_to_SPL(frame *s, char *addr, int *cnt_sended_frames)
 {
@@ -202,6 +200,7 @@ void SDL_to_SPL(frame *s, char *addr, int *cnt_sended_frames)
                 addr[MEM_FLAG_ADDR] = Can_Read;
                 (*cnt_sended_frames)++;
                 printf("数据链路层成功发给物理层第%d个帧\n", *cnt_sended_frames);
+                fflush(stdout);
                 break;
             }
         }
@@ -215,17 +214,12 @@ void SDL_to_SPL(frame *s, char *addr, int *cnt_sended_frames)
                 memcpy(&addr[DATA_START_ADDR], s, MAX_PKT + 12);
                 addr[MEM_FLAG_ADDR] = Can_Read_Not_Send;
                 (*cnt_sended_frames)++;
+                printf("数据链路层成功发给物理层第%d个帧\n", *cnt_sended_frames);
+                fflush(stdout);
                 break;
             }
         }
     }
-}
-
-void write_f(int s)
-{
-    printf("%d\n", s);
-    fflush(stdout);
-    READ_SIGNAL = true;
 }
 
 void SPL_from_SDL(frame *s, char *addr)
@@ -363,6 +357,11 @@ void generate_file(const char *filename)
     close(fd);
 }
 
+boolen fit_percentage(int percentage)
+{
+    return rand() % 1000 < percentage ? true : false;
+}
+
 void RDL_to_RNL(packet *p)
 {
 
@@ -377,20 +376,6 @@ void RDL_to_RNL(packet *p)
     write(fd, p->data, MAX_PKT);
     close(fd);
 }
-
-// void RDL_to_RNL(packet *p, char *addr)
-// {
-//     while (1)
-//     {
-//         if ((int)(addr[MEM_FLAG_ADDR]) == Can_Write)
-//         {
-//             memcpy(&addr[DATA_START_ADDR], p, MAX_PKT);
-//             addr[MEM_FLAG_ADDR] = Can_Read;
-//             break;
-//         }
-//     }
-//     return;
-// }
 
 void FRAME_ARRIVAL_SIGNAL(int s)
 {
@@ -426,6 +411,7 @@ void char2frame(char *str, frame *s)
 }
 void print_frame(frame s)
 {
+
     char buf[10];
     if (s.kind == data)
         strcpy(buf, "data");
@@ -434,8 +420,8 @@ void print_frame(frame s)
         strcpy(buf, "ack");
     else if (s.kind == nak)
         strcpy(buf, "nak");
-    printf("接收到%s帧\n", buf);
-    printf("发送序号是%d\n", s.seq);
+    printf("接收到%s帧  ", buf);
+    printf("发送序号是%d  ", s.seq);
     printf("接收序号是%d\n", s.ack);
 }
 
@@ -572,14 +558,17 @@ void RPL_from_RDL(frame *s, char *addr)
     {
         while (1)
         {
+
             if (addr[MEM_FLAG_ADDR] == Can_Read_Send)
             {
                 memcpy(s, &addr[DATA_START_ADDR], MAX_PKT + 12);
                 addr[MEM_FLAG_ADDR] = Can_Write_Not_Send;
+
                 break;
             }
         }
     }
+
     return;
 }
 
@@ -609,6 +598,7 @@ void RPL_to_SPL(frame s, int client_socket_desc)
         printf("成功发送ACK\n");
     }
 }
+
 
 void SPL_from_RPL(frame *s, int client_socket_desc)
 {
@@ -665,6 +655,87 @@ void SPL_from_RPL(frame *s, int client_socket_desc)
     return;
 }
 
+
+void SPL_from_RPL1(frame *s, int client_socket_desc, char *addr)
+{
+    fd_set rest;
+    /*select延时变量*/
+    struct timeval tempval;
+    // lect等待时间
+    tempval.tv_sec = 0;
+    // lect等待秒数
+    tempval.tv_usec = 0;
+    // lect等待毫秒数
+
+    char frame_header[12];
+    int rd_ret;
+    int total = 0;
+
+    while (1)
+    {
+        //把监听套接字放入读操作符
+        FD_ZERO(&rest); //清空读操作符
+        FD_SET(client_socket_desc, &rest);
+        int select_return = select(client_socket_desc + 1, &rest, NULL, NULL, &tempval); //监听套接的可读和可写条件
+        if (select_return < 0)
+        {
+            perror("select");
+            exit(1);
+        }
+        if (FD_ISSET(client_socket_desc, &rest))
+        {
+            rd_ret = read(client_socket_desc, frame_header + total, 12 - total);
+            if (rd_ret < 0)
+            {
+                perror("receiver物理层从sender物理层接收数据出错\n");
+                exit(1);
+            }
+            if (rd_ret == 0)
+            {
+                printf("对方中断连接\n");
+                fflush(stdout);
+                exit(1);
+            }
+            total += rd_ret;
+            //printf("total%d\n", total);
+            fflush(stdout);
+            if (total == 12)
+                break;
+        }
+        if (addr[MEM_FLAG_ADDR] == Can_Write_Not_Send) //超时或者错误数据
+            return;
+    }
+    char2frame(frame_header, s);
+    print_frame(*s);
+    fflush(stdout);
+    total = 0;
+    if (s->kind == data)
+    {
+        //继续读1024个数据
+        while (1)
+        {
+            rd_ret = read(client_socket_desc, &s->info.data[0] + total, MAX_PKT - total);
+            if (rd_ret < 0)
+            {
+                perror("receiver物理层从sender物理层接收数据出错\n");
+                exit(1);
+            }
+            if (rd_ret == 0)
+            {
+                printf("对方中断连接\n");
+                fflush(stdout);
+                exit(1);
+            }
+            total += rd_ret;
+            if (total == MAX_PKT)
+                break;
+        }
+        printf("接收数据帧成功\n");
+    }
+
+    return;
+}
+
 //判断是ack包，则将共享内存改为可写
 void SPL_to_SDL(frame *s, char *addr)
 {
@@ -673,6 +744,7 @@ void SPL_to_SDL(frame *s, char *addr)
     {
         if (current_protocol == PROTOCOL2 && s->kind == ack)
         {
+
             if (addr[MEM_FLAG_ADDR] == Can_Write_Send)
             {
                 addr[MEM_FLAG_ADDR] = Can_Write_Not_Send;
@@ -692,6 +764,7 @@ void RDL_to_RPL(frame *s, char *addr)
             {
                 memcpy(&addr[DATA_START_ADDR], s, MAX_PKT + 12);
                 addr[MEM_FLAG_ADDR] = Can_Read_Send;
+
                 break;
             }
         }
@@ -710,9 +783,13 @@ void init_f_ack(frame *s)
 void SDL_from_SPL(char *addr)
 {
     if (current_protocol == PROTOCOL2)
+    {
         while (1)
+        {
             if (addr[MEM_FLAG_ADDR] == Can_Write_Not_Send)
                 break;
+        }
+    }
 }
 void to_final_file()
 {
@@ -765,8 +842,4 @@ void RNL_from_RDL(packet *buffer, int fd)
         if (total == MAX_PKT)
             break;
     }
-}
-boolen fit_percentage(int percentage)
-{
-    return rand() % 1000 < percentage ? true : false;
 }

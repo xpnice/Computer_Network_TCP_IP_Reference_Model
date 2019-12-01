@@ -24,7 +24,7 @@ int client_socket_desc;
 
 int main(int argc, char *argv[])
 {
-    current_protocol = PROTOCOL3;
+    current_protocol = PROTOCOL2;
     //共享内存
     int shmid = GetShm(MEM_SIZE, RDL_RPL_KEYID);
     char *addr = shmat(shmid, NULL, 0);
@@ -66,22 +66,27 @@ int main(int argc, char *argv[])
     int count = 0;
     while (1)
     {
+
         printf("**********************\n");
         count++;
         printf("\n第%d帧\n", count);
-
         RPL_from_SPL(&s, client_socket_desc); /*从发送方物理层接收包 */
-        sysUsecTime();
-        int i = 0;
-        for (i = 0; i < MAX_PKT; i++)
-            printf("%c", s.info.data[i]);
-
-        fflush(stdout);
-
-        //此时，需要共享内存标志位为Can_Write & ~Send_Ack
-        
+        if (fit_percentage(SPL_ERRO_PERCENTAGE))
+        {
+            printf("<!---RPL向上发送CKSUM_ERR---!>\n");
+            fflush(stdout);
+            addr[MEM_FLAG_ADDR] = CKSUM_ERROR;
+            continue;
+        }
+        if (fit_percentage(SPL_LOST_PERCENTAGE))
+        {
+            printf("<!---RPL没收到，数据包丢了！！！！--!>\n");
+            fflush(stdout);
+            continue;
+        }
+        addr[MEM_FLAG_ADDR] = Can_Write_Not_Send;
         RPL_to_RDL(&s, addr); /* 向数据链路层发送帧 */
-        
+
         //此时，共享内存标志位被置为Can_Read & ~Send_Ack
         fflush(stdout);
 
@@ -89,8 +94,6 @@ int main(int argc, char *argv[])
         RPL_from_RDL(&f_ack, addr); /* 从数据链路层接收回复帧 */
                                     //此时，共享内存标志位被置为Can_Read & ~Send_Ack
                                     //共享内存标志位为Can_Write & ~Send_Ack
-        
-        
 
         printf("从数据链路层接收到回复帧---%d\n", f_ack.kind);
         fflush(stdout);

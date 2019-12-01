@@ -9,7 +9,7 @@
 
 #define WRITE_FINISH 40
 #define SHARE_FILE_END 41
-#define SIZEOF_FILE 1024 * 1024 * 1
+#define SIZEOF_FILE 1024 * 1024 * 1024
 #define MAX_SHARE_FILES 5010
 
 const char *RECEIVER_PORT = "4000";
@@ -27,11 +27,15 @@ const char Can_Write_Not_Send = '0';
 const char Can_Read_Not_Send = '1';
 const char Can_Write_Send = '2';
 const char Can_Read_Send = '3';
+const char CKSUM_ERROR = '4';
 
 #define MEM_SIZE 1040
 #define SDL_SPL_KEYID 1
 #define RDL_RPL_KEYID 2
 #define RNL_RDL_KEYID 3
+
+#define TIME_LIMIT_SEC 0       //以s为单位
+#define TIME_LIMIT_USEC 500000 //以微秒为单位
 
 int MEM_SHMID[4]; //存储共享内存shmid，以便释放
 
@@ -42,15 +46,14 @@ int MEM_SHMID[4]; //存储共享内存shmid，以便释放
 #define PROTOCOL4 4
 int current_protocol;
 
-//协议一概率，单位千分之一
+//协议二概率，单位千分之一
 #define ACK_DELAY 100 //协议二延时概率 缺省10%
 #define DELAY_US 100  //协议二延时时间 单位微妙
-//协议二概率，单位千分之一
-#define RPL_CKERR 30  //协议三接收方CKSUM_ERROR概率 缺省3%
-#define RPL_LOST 30   //协议三接收方CKSUM_ERROR概率 缺省3%
-#define SPL_CKERR 30  //协议三接收方丢包概率 缺省3%
-#define SPL_LOST 30   //协议三发送方CKSUM_ERROR概率 缺省3%
-
+//协议三概率，单位千分之一
+#define RPL_LOST_PERCENTAGE 30 //协议三接收方CKSUM_ERROR概率 缺省3%
+#define RPL_ERRO_PERCENTAGE 30 //协议三接收方CKSUM_ERROR概率 缺省3%
+#define SPL_LOST_PERCENTAGE 30 //协议三发送方CKSUM_ERROR概率 缺省3%
+#define SPL_ERRO_PERCENTAGE 30 //协议三接收方丢包概率 缺省3%
 
 static int CommShm(int size, int flags, int id);
 int DestroyShm(int shmid);
@@ -116,6 +119,7 @@ void SDL_to_SPL(frame *s, char *addr, int *cnt_sended_frames);
 void SPL_from_SDL(frame *s, char *addr);
 void SPL_to_RPL(frame s, int client_socket_desc);
 void SPL_from_RPL(frame *s, int client_socket_desc);
+void SPL_from_RPL1(frame *s, int client_socket_desc, char *addr);
 //--------------------------------------------------------------------
 void RPL_from_SPL(frame *s, int client_socket_desc);
 void RPL_to_RDL(frame *s, char *addr);
@@ -132,11 +136,6 @@ void RDL_from_RPL(frame *p, char *addr);
 
 //void RNL_from_RDL(packet *buffer, char* addr);
 //---------------------------------------------------------------------------
-//启动第K帧的定时器
-void start_timer(seq_nr k);
-
-//停止第K帧的定时器
-void stop_timer(seq_nr k);
 
 //启动确认包定时器
 void start_ack_timer(void);
@@ -171,11 +170,12 @@ void sysLocalTime();
 void sysUsecTime();
 
 void init_f_ack(frame *s);
-boolen fit_percentage(int percentage);
+
 void SDL_from_SPL(char *addr);
 void RDL_to_RPL(frame *s, char *addr);
 //使k在[0~MAX_SEQ-1]间循环增长
 //如果MAX_SEQ=1,则0/1互换
+#define MAX_SEQ 1
 #define inc(k)       \
     if (k < MAX_SEQ) \
         k = k + 1;   \
